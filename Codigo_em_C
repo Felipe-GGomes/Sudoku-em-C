@@ -1,0 +1,241 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <time.h>
+
+#define TAM 9
+
+//Definindo se é Windows ou mac/linux-------------------------------------------------------------------
+#ifdef _WIN32
+#include <windows.h>
+void esperar() {
+    Sleep(1500);
+}
+#else
+#include <unistd.h>
+void esperar() {
+    usleep(1500000);
+}
+#endif
+
+
+// 3 jogos resolvidos que randomiza pra serem jogados---------------------------------------------------
+int tabuleiros[3][TAM][TAM] = {
+    {
+        {5,3,4,6,7,8,9,1,2},
+        {6,7,2,1,9,5,3,4,8},
+        {1,9,8,3,4,2,5,6,7},
+        {8,5,9,7,6,1,4,2,3},
+        {4,2,6,8,5,3,7,9,1},
+        {7,1,3,9,2,4,8,5,6},
+        {9,6,1,5,3,7,2,8,4},
+        {2,8,7,4,1,9,6,3,5},
+        {3,4,5,2,8,6,1,7,9}
+    },
+    {
+        {8,2,7,1,5,4,3,9,6},
+        {9,6,5,3,2,7,1,4,8},
+        {3,4,1,6,8,9,7,5,2},
+        {5,9,3,4,6,8,2,7,1},
+        {4,7,2,5,1,3,6,8,9},
+        {6,1,8,9,7,2,4,3,5},
+        {7,8,6,2,3,5,9,1,4},
+        {1,5,4,7,9,6,8,2,3},
+        {2,3,9,8,4,1,5,6,7}
+    },
+    {
+        {2,9,5,7,4,3,8,6,1},
+        {4,3,1,8,6,5,9,2,7},
+        {8,7,6,1,9,2,5,4,3},
+        {3,8,7,4,5,9,2,1,6},
+        {6,1,2,3,8,7,4,9,5},
+        {5,4,9,2,1,6,7,3,8},
+        {7,6,3,5,2,4,1,8,9},
+        {9,2,8,6,7,1,3,5,4},
+        {1,5,4,9,3,8,6,7,2}
+    }
+};
+
+int sudoku[TAM][TAM];
+int fixo[TAM][TAM];
+int resposta[TAM][TAM];
+
+//limpeza de terminal-------------------------------------------------------------------------------------
+void limparTerminal()
+{
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
+
+//printa tabuleiros----------------------------------------------------------------------------------------
+void imprimirSudoku()
+{
+    int i, j;
+    //cabeçario
+    printf("\n\tSUDOKU\n\n");
+    printf("     ");
+    for(i = 0; i < TAM; i++)
+        printf(" %d ", i + 1);
+    printf("\n");
+    //meio=======
+    printf("    ------------------------------\n");
+    for(i = 0; i < TAM; i++){
+        printf(" %d |",i + 1);
+        for(j=0;j < TAM;j++)
+        {
+            if(j%3 == 0 && j != 0)
+                printf("|");
+            if (sudoku[i][j] == 0)
+                printf(" * ");
+            else
+                printf(" %d ",sudoku[i][j]);
+        }
+        printf("\n");
+
+        if((i+1) % 3 == 0 && i != TAM -1)
+            printf("    ------------------------------\n");
+    }
+}
+
+
+//permite inserir-----------------------------------------------------------------------------------------
+bool podeInserir(int linha, int coluna, int num)
+{
+    int i, j;
+    int blocoLinha = linha - linha % 3;
+    int blocoColuna = coluna - coluna % 3;
+
+    /*
+    [ 4, 0, 6 ]   ← linha 3
+    [ 0, 2, 7 ]   ← linha 4
+    [ 1, 3, 0 ]   ← linha 5
+
+    blocoLinha = 4 - (4 % 3) = 4 - 1 = 3
+    blocoColuna = 1 - (1 % 3) = 1 - 1 = 0
+    */
+
+
+    for(i = 0; i < TAM; i++)
+        if(sudoku[linha][i] == num || sudoku[i][coluna] == num)
+            return false;
+    for(i = blocoLinha; i < blocoLinha + 3; i++)
+        for(j = blocoColuna; j < blocoColuna + 3; j++)
+            if(sudoku[i][j] == num)
+                return false;
+    return true;
+}
+
+//checa se ganhou----------------------------------------------------------------------------------------
+bool ganhou()
+{
+    int i, j;
+
+    for(i=0;i<TAM;i++)
+        for(j=0;j<TAM;j++)
+            if(sudoku[i][j]==0)
+                return false;
+    return true;
+}
+
+//analisa dificuldade------------------------------------------------------------------------------------
+void dificuldadeSudoku(int diff, int resolvido[TAM][TAM])
+{
+    int maxRemove = (diff == 1) ? 10 : (diff == 2) ? 20 : 30;
+    int removidos = 0;
+    int i, j;
+    for(i=0;i<TAM;i++)
+        for(j=0; j<TAM; j++)
+        {
+            sudoku[i][j] = resolvido[i][j];
+            resposta[i][j] = resolvido[i][j];
+        }
+    while(removidos < maxRemove)
+    {
+        i = rand() % TAM;
+        j = rand() % TAM;
+
+        if(sudoku[i][j] != 0)
+        {
+            sudoku[i][j] = 0;
+            removidos++;
+        }
+    }
+}
+
+//marca os numeros fixos para nao permitir que o usuario ensira numeros ja no sudoku-----------------------
+void marcaFix()
+{
+    int i, j;
+    for(i=0;i<TAM;i++)
+        for(j=0;j<TAM;j++)
+            fixo[i][j] = (sudoku[i][j] != 0);
+}
+
+//main-----------------------------------------------------------------------------------------------------
+int main(void)
+{
+    srand(time(NULL));
+
+    int dificuldade, linha, coluna, num, indice;
+
+    printf("Escolha a dificuldade:\n1 - FACIL\n2 - MEDIO\n3 - DIFICIL\n> ");
+    scanf("%d",&dificuldade);
+    //randomiza 1 tabuleiro
+    indice = rand() % 3;
+    dificuldadeSudoku(dificuldade, tabuleiros[indice]);
+    marcaFix();
+
+    while(!ganhou())
+    {
+        limparTerminal();
+        imprimirSudoku();
+
+        printf("\nDigite linha (1-9), Coluna (1-9) e o Numero (1-9)\n");
+        scanf("%d %d %d",&linha, &coluna, &num);
+
+        linha--;
+        coluna--;
+
+        if(linha < 0 || linha > 9 || coluna < 0 || coluna > 9 || num < 1 || num > 9)
+        {
+            printf("entrada invalida, Aguarde...\n");
+            coluna = 0;
+            linha = 0;
+            num = 0;
+            esperar();
+            continue;
+        }
+        if(fixo[linha][coluna])
+        {
+            printf("Essa posicao e fixa, por isso nao pode ser alterada,  Aguarde...");
+            esperar();
+            continue;
+        }
+
+        if(!podeInserir(linha, coluna, num))
+        {
+            printf("Numero invalido,  Aguarde...\n");
+            esperar();
+            continue;
+        }
+        if(resposta[linha][coluna] == num)
+        {
+            sudoku[linha][coluna] = num;
+            printf("Acertou!");
+        }
+        else
+        {
+            printf("Esse numero nao e o certo nessa posicao tente novamente");
+        }
+        esperar();
+    }
+    limparTerminal();
+    imprimirSudoku();
+    printf("\nParabens! voce completou o sudoku\n");
+    printf("voce ganhou 1 balao\n");
+    printf("O\n");
+    printf("1");
+}
